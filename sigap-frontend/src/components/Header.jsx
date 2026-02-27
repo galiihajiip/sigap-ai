@@ -1,4 +1,5 @@
 import React from 'react';
+import { NavLink } from 'react-router-dom';
 import { Bell, ChevronDown } from 'lucide-react';
 
 const Header = () => {
@@ -22,8 +23,27 @@ const Header = () => {
                 <div className="flex items-center gap-6">
                     {/* Navigation */}
                     <nav className="hidden md:flex items-center gap-1">
-                        <a className="px-4 py-2 text-sm font-medium text-[#135bec] border-b-2 border-[#135bec] transition-colors" href="#">Dashboard</a>
-                        <a className="px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-[#2a3441] transition-colors" href="#">Analytics</a>
+                        <NavLink
+                            to="/"
+                            end
+                            className={({ isActive }) =>
+                                isActive
+                                    ? 'px-4 py-2 text-sm font-medium text-[#135bec] border-b-2 border-[#135bec] transition-colors'
+                                    : 'px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-[#2a3441] transition-colors'
+                            }
+                        >
+                            Dashboard
+                        </NavLink>
+                        <NavLink
+                            to="/analytics"
+                            className={({ isActive }) =>
+                                isActive
+                                    ? 'px-4 py-2 text-sm font-medium text-[#135bec] border-b-2 border-[#135bec] transition-colors'
+                                    : 'px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-[#2a3441] transition-colors'
+                            }
+                        >
+                            Analytics
+                        </NavLink>
                         <a className="px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-[#2a3441] transition-colors" href="#">Live Map</a>
                         <a className="px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-[#2a3441] transition-colors" href="#">Settings</a>
                     </nav>
