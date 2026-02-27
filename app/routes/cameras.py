@@ -1,9 +1,13 @@
+from typing import List
+
 from fastapi import APIRouter
-from fastapi.responses import JSONResponse
+
+from app.state_store import store
+from core.schemas import CameraFeedCard
 
 router = APIRouter(tags=["cameras"])
 
 
-@router.get("/cameras")
-def get_cameras() -> JSONResponse:
-    return JSONResponse(status_code=501, content={"detail": "Not implemented yet."})
+@router.get("/cameras", response_model=List[CameraFeedCard])
+def get_cameras() -> List[CameraFeedCard]:
+    return store.get_cameras()
