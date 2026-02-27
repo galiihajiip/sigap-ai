@@ -1,19 +1,32 @@
 import React from 'react';
-import { Bell, ChevronDown } from 'lucide-react';
+import { Bell, ChevronDown, Map, LayoutDashboard, LineChart, Settings } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
+import { useNotifications } from '../context/NotificationContext';
+import NotificationPanel from './NotificationPanel';
+
+const navItems = [
+    { label: 'DashBoard', icon: LayoutDashboard, path: '/' },
+    { label: 'Analytics', icon: LineChart, path: '/analytics' },
+    { label: 'Live Map', icon: Map, path: '/live-map' },
+    { label: 'Settings', icon: Settings, path: '/settings' },
+];
 
 const Header = () => {
+    const location = useLocation();
+    const { togglePanel, unreadCount } = useNotifications();
+
     return (
         <header className="sticky top-0 z-50 w-full border-b border-[#2a3441] bg-[#111722]/95 backdrop-blur supports-[backdrop-filter]:bg-[#111722]/60">
             <div className="flex h-16 items-center px-6 gap-6">
                 {/* Logo */}
-                <div className="flex items-center gap-3 mr-4">
-                    <div className="w-8 h-8 text-[#135bec]">
-                        <svg className="h-full w-full" fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M42.4379 44C42.4379 44 36.0744 33.9038 41.1692 24C46.8624 12.9336 42.2078 4 42.2078 4L7.01134 4C7.01134 4 11.6577 12.932 5.96912 23.9969C0.876273 33.9029 7.27094 44 7.27094 44L42.4379 44Z" fill="currentColor" />
-                        </svg>
-                    </div>
+                <Link to="/" className="flex items-center gap-3 mr-4">
+                    <img
+                        src="/logo.png"
+                        alt="Sigap AI Logo"
+                        className="w-9 h-9 object-contain"
+                    />
                     <h1 className="text-xl font-bold tracking-tight text-white">Sigap AI</h1>
-                </div>
+                </Link>
 
                 {/* Spacer */}
                 <div className="flex-1" />
@@ -22,18 +35,38 @@ const Header = () => {
                 <div className="flex items-center gap-6">
                     {/* Navigation */}
                     <nav className="hidden md:flex items-center gap-1">
-                        <a className="px-4 py-2 text-sm font-medium text-[#135bec] border-b-2 border-[#135bec] transition-colors" href="#">Dashboard</a>
-                        <a className="px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-[#2a3441] transition-colors" href="#">Analytics</a>
-                        <a className="px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-[#2a3441] transition-colors" href="#">Live Map</a>
-                        <a className="px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-[#2a3441] transition-colors" href="#">Settings</a>
+                        {navItems.map((item) => {
+                            const active = location.pathname === item.path;
+                            return (
+                                <Link
+                                    key={item.path}
+                                    to={item.path}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${active
+                                            ? 'text-[#135bec] border-b-2 border-[#135bec] rounded-none'
+                                            : 'text-slate-400 hover:text-white hover:bg-[#2a3441]'
+                                        }`}
+                                >
+                                    <item.icon className="w-4 h-4" />
+                                    {item.label}
+                                </Link>
+                            );
+                        })}
                     </nav>
 
                     {/* Right Actions */}
                     <div className="flex items-center gap-4 border-l border-[#2a3441] pl-6">
                         {/* Notification Bell */}
-                        <button className="relative rounded-lg p-2 text-slate-400 hover:text-white hover:bg-[#2a3441] transition-colors">
+                        <button
+                            data-notification-bell
+                            onClick={togglePanel}
+                            className="relative rounded-lg p-2 text-slate-400 hover:text-white hover:bg-[#2a3441] transition-colors"
+                        >
                             <Bell size={24} />
-                            <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-red-500" />
+                            {unreadCount > 0 && (
+                                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 shadow-lg shadow-red-500/30 animate-pulse">
+                                    {unreadCount}
+                                </span>
+                            )}
                         </button>
 
                         <div className="h-8 w-[1px] bg-[#2a3441]" />
@@ -53,6 +86,7 @@ const Header = () => {
                     </div>
                 </div>
             </div>
+            <NotificationPanel />
         </header>
     );
 };
