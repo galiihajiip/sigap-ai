@@ -1,0 +1,8 @@
+{
+  "level": "total",
+  "seq_len": 60,
+  "epochs_run": 3,
+  "best_epoch": 1,
+  "best_val_loss": 0.839716,
+  "num_features": 23
+}
