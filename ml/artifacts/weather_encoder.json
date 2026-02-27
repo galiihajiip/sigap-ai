@@ -1,0 +1,14 @@
+{
+  "categories": [
+    "Rain",
+    "Cloudy",
+    "Hot",
+    "Clear"
+  ],
+  "columns": [
+    "wcon_Rain",
+    "wcon_Cloudy",
+    "wcon_Hot",
+    "wcon_Clear"
+  ]
+}
