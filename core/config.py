@@ -1,0 +1,23 @@
+APP_NAME = "Sigap AI Backend"
+API_PREFIX = "/api"
+TICK_SECONDS = 2
+
+# Simulation scale
+SIM_MINUTES_PER_TICK = 1
+CYCLE_SECONDS = 90
+
+# Signal safety
+MIN_GREEN_SECONDS = 20
+MAX_GREEN_SECONDS = 70
+CLEARANCE_SECONDS = 5
+
+# Default initial greens (match UI example Current Green 45s)
+DEFAULT_GREEN_SECONDS = {"N": 45, "E": 20, "S": 45, "W": 20}
+
+# Congestion thresholds
+CONGESTION_ALERT_CAPACITY_PERCENT = 80
+CONGESTION_RISK_HIGH_PERCENT = 76
+DEFAULT_SYSTEM_CONFIDENCE_PERCENT = 95
+
+# Stale sensor
+SENSOR_STALE_SECONDS = 60
