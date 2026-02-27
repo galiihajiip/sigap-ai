@@ -1,60 +1,56 @@
 import React from 'react';
+import Header from './components/Header';
 import CameraFeed from './components/CameraFeed';
+import AIRecommendations from './components/AIRecommendations';
+import AIPredictionEngine from './components/AIPredictionEngine';
+import StatsRow from './components/StatsRow';
 import PredictionTimeline from './components/PredictionTimeline';
-import { LayoutDashboard, Map, BarChart3, Settings, Bell } from 'lucide-react';
 
 function App() {
   return (
-    <div className="flex h-screen bg-[#0f172a] text-slate-200 font-sans overflow-hidden">
-      {/* Sidebar - Navigasi Samping */}
-      <aside className="w-64 bg-[#1e293b] border-r border-slate-700 p-6 flex flex-col">
-        <div className="flex items-center gap-3 mb-10">
-          <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-xl text-white">S</div>
-          <h1 className="text-xl font-bold tracking-tight text-white uppercase">Sigap.AI</h1>
-        </div>
-        
-        <nav className="flex-1 space-y-2">
-          <button className="flex items-center gap-3 w-full p-3 rounded-lg bg-blue-600/10 text-blue-400 border border-blue-600/20 font-medium">
-            <LayoutDashboard size={20} /> Dashboard
-          </button>
-          <button className="flex items-center gap-3 w-full p-3 rounded-lg hover:bg-slate-800 transition-colors text-slate-400 hover:text-white">
-            <Map size={20} /> Live Map
-          </button>
-          <button className="flex items-center gap-3 w-full p-3 rounded-lg hover:bg-slate-800 transition-colors text-slate-400 hover:text-white">
-            <BarChart3 size={20} /> Analytics
-          </button>
-        </nav>
+    <div className="bg-[#101622] text-slate-100 font-[Space_Grotesk] antialiased min-h-screen flex flex-col overflow-x-hidden selection:bg-[#135bec] selection:text-white">
+      {/* Sticky Header */}
+      <Header />
 
-        <div className="pt-6 border-t border-slate-700">
-          <button className="flex items-center gap-3 w-full p-3 rounded-lg hover:bg-slate-800 transition-colors text-slate-400 hover:text-white">
-            <Settings size={20} /> Settings
-          </button>
-        </div>
-      </aside>
-
-      {/* Main Content Area */}
-      <main className="flex-1 overflow-y-auto p-8 bg-[#0f172a]">
-        <header className="flex justify-between items-center mb-8">
+      {/* Main Content */}
+      <main className="flex-1 p-6 lg:p-8 max-w-[1600px] mx-auto w-full">
+        {/* Page Title + System Status */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
           <div>
-            <h2 className="text-2xl font-bold text-white">System Overview</h2>
-            <p className="text-slate-400">Monitoring: Tomang Toll Exit Conflict Point</p>
+            <h2 className="text-3xl font-bold text-white mb-2">System Overview</h2>
+            <p className="text-slate-400">Real-time city congestion monitoring and AI intervention</p>
           </div>
-          <div className="flex items-center gap-4">
-             <Bell className="text-slate-400 cursor-pointer hover:text-white" />
-             <div className="w-10 h-10 rounded-full bg-blue-500 border-2 border-slate-700 flex items-center justify-center font-bold text-white">
-              KD
-            </div>
+          <div className="flex items-center gap-3">
+            <span className="flex h-3 w-3 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500" />
+            </span>
+            <span className="text-sm font-medium text-green-500">System Operational</span>
+            <span className="text-slate-600 mx-2">|</span>
+            <span className="text-sm text-slate-400">
+              Last update: <span className="text-white font-mono">14:32:05</span>
+            </span>
           </div>
-        </header>
-
-        {/* --- KOMPONEN HASIL KERJAMU --- */}
-        <div className="space-y-8">
-          {/* Grid Kamera (Cam 1 - Cam 4) [cite: 196-200] */}
-          <CameraFeed />
-
-          {/* Grafik Prediksi LSTM (60m Forecast) [cite: 220] */}
-          <PredictionTimeline />
         </div>
+
+        {/* Camera Grid (2/3) + AI Recommendations (1/3) */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
+          <div className="xl:col-span-2 grid grid-cols-1 md:grid-cols-2 grid-rows-2 gap-4">
+            <CameraFeed />
+          </div>
+          <AIRecommendations />
+        </div>
+
+        {/* AI Prediction Engine */}
+        <div className="mb-6">
+          <AIPredictionEngine />
+        </div>
+
+        {/* Stats Row */}
+        <StatsRow />
+
+        {/* Prediction Timeline + Bottom Stats */}
+        <PredictionTimeline />
       </main>
     </div>
   );
