@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import uuid
 from typing import TYPE_CHECKING, Dict, List, Optional
 
 from core.config import DEFAULT_SYSTEM_CONFIDENCE_PERCENT
 from core.schemas import Recommendation
+from core.time_utils import now_iso
 from rec.rules import evaluate
 
 if TYPE_CHECKING:
@@ -31,7 +33,8 @@ def generate_top_recommendations(state: "StateStore") -> List[Recommendation]:
     """
     candidates: List[Dict] = []
 
-    for intersection_summary in state.get_intersections():
+    intersections = state.get_intersections()
+    for intersection_summary in intersections:
         iid = intersection_summary.intersectionId
         location_name = intersection_summary.locationName
 
@@ -87,6 +90,12 @@ def generate_top_recommendations(state: "StateStore") -> List[Recommendation]:
         c.pop("_density", None)
         c.pop("_queue", None)
         top.append(Recommendation(**c))
+
+    # Keep dashboard actionable even when congestion is below hard threshold.
+    if not top and intersections:
+        advisory = _build_advisory_recommendation(state, intersections[0])
+        if advisory is not None:
+            top.append(advisory)
 
     return top
 
@@ -144,3 +153,48 @@ def _extract_greens(
         return {a: int(flat_green) for a in approaches}
 
     return dict(DEFAULT_GREEN_SECONDS)
+
+
+def _build_advisory_recommendation(
+    state: "StateStore",
+    intersection_summary,
+) -> Optional[Recommendation]:
+    iid = intersection_summary.intersectionId
+    live = state.get_live(iid)
+    if live is None:
+        return None
+
+    queue_per_approach = _get_queue_per_approach(state, iid, live.queueLengthVehicles)
+    current_greens = _extract_greens(intersection_summary.currentSignalPlan, queue_per_approach)
+    target_approach = max(queue_per_approach, key=queue_per_approach.get) if queue_per_approach else "S"
+    current_green = current_greens.get(target_approach, 45)
+
+    # Small proactive adjustment suggestion for moderate traffic.
+    delta = 5 if live.densityPercent < 70 else 8
+    recommended_green = current_green + delta
+
+    pred = state.get_prediction15m(iid)
+    confidence = (
+        pred.systemConfidencePercent
+        if pred is not None
+        else DEFAULT_SYSTEM_CONFIDENCE_PERCENT
+    )
+
+    return Recommendation(
+        recommendationId=f"REC-{uuid.uuid4().hex[:8].upper()}",
+        createdAt=now_iso(),
+        status="PENDING",
+        targetLocationName=intersection_summary.locationName,
+        targetIntersectionId=iid,
+        targetApproach=target_approach,
+        alertTitle="Advisory: Traffic Flow Optimization",
+        alertDescription=(
+            "Arus masih stabil, namun model menyarankan optimasi kecil "
+            f"untuk approach {target_approach} agar antrean tetap rendah."
+        ),
+        predictedDelayIfNoActionMinutes=round(max(1.0, live.waitTimeMinutes), 1),
+        currentGreenSeconds=current_green,
+        recommendedGreenSeconds=recommended_green,
+        deltaSeconds=delta,
+        confidencePercent=confidence,
+    )

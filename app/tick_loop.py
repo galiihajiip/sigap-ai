@@ -282,25 +282,28 @@ def _build_intersection_summary(rt: _IntersectionRuntime) -> IntersectionSummary
 
 def _build_cameras(rt: _IntersectionRuntime, snapshot: Dict) -> list:
     """Generate synthetic CameraFeedCard entries from live metrics."""
-    flow_label = compute_flow_label(snapshot["avgSpeedKmh"])
-    return [
-        CameraFeedCard(
-            cameraId=f"CAM-{rt.intersection_id}-1",
-            label=f"Cam 1 - {rt.location_name}",
-            status="LIVE",
-            flowLabel=flow_label,
-            avgSpeedKmh=snapshot["avgSpeedKmh"],
-            lastFrameTime=wib_now_iso(),
-        ),
-        CameraFeedCard(
-            cameraId=f"CAM-{rt.intersection_id}-2",
-            label=f"Cam 2 - {rt.location_name} (bypass)",
-            status="LIVE",
-            flowLabel=flow_label,
-            avgSpeedKmh=snapshot["avgSpeedKmh"],
-            lastFrameTime=wib_now_iso(),
-        ),
+    base_speed = snapshot["avgSpeedKmh"]
+    cam_speeds = [base_speed, max(5.0, base_speed - 4.0), base_speed + 2.0, max(5.0, base_speed - 7.0)]
+    cam_labels = [
+        f"Cam 1 - {rt.location_name} North",
+        f"Cam 2 - {rt.location_name} East",
+        f"Cam 3 - {rt.location_name} South",
+        f"Cam 4 - {rt.location_name} West",
     ]
+
+    cams = []
+    for idx, speed in enumerate(cam_speeds):
+        cams.append(
+            CameraFeedCard(
+                cameraId=f"CAM-{rt.intersection_id}-{idx + 1}",
+                label=cam_labels[idx],
+                status="LIVE",
+                flowLabel=compute_flow_label(speed),
+                avgSpeedKmh=round(speed, 1),
+                lastFrameTime=wib_now_iso(),
+            )
+        )
+    return cams
 
 
 # ---------------------------------------------------------------------------

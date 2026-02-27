@@ -9,19 +9,21 @@ from sim.config import LANES
 # ---------------------------------------------------------------------------
 # Base arrival rates (vehicles / tick at peak) — scaled by lane count
 # N and S are mainline (3 lanes each), E and W are minor (2 lanes each)
+# Peak total (160/tick) exceeds service capacity (~123/tick) so congestion
+# builds during rush hour and recommendations are generated.
 # ---------------------------------------------------------------------------
 _BASE_PEAK_ARRIVALS: Dict[str, float] = {
-    "N": 28.0,
-    "E": 14.0,
-    "S": 28.0,
-    "W": 14.0,
+    "N": 52.0,
+    "E": 28.0,
+    "S": 52.0,
+    "W": 28.0,
 }
 
-# Off-peak fraction of peak demand
-_OFF_PEAK_FRACTION = 0.35
+# Off-peak fraction of peak demand (0.35 × 160 ≈ 56 veh/tick < 123 capacity)
+_OFF_PEAK_FRACTION = 0.5
 
-# Ticks over which demand ramps up to peak (120 ticks = 2 simulated hours)
-_RAMP_TICKS = 120
+# Ticks over which demand ramps up to peak (30 ticks @ 2 s/tick ≈ 60 s)
+_RAMP_TICKS = 30
 
 # Noise as a fraction of the current demand (±)
 _NOISE_FRACTION = 0.12

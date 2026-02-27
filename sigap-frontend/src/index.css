@@ -1,0 +1,150 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #101622;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #2a3441;
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #374354;
+  }
+
+  body {
+    @apply bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display antialiased min-h-screen flex flex-col overflow-x-hidden;
+  }
+
+  ::selection {
+    @apply bg-primary text-white;
+  }
+}
+
+@layer utilities {
+  .glass-effect {
+    background: rgba(30, 36, 51, 0.7);
+    backdrop-filter: blur(10px);
+  }
+
+  .chart-gradient {
+    background: linear-gradient(180deg, rgba(19, 91, 236, 0.2) 0%, rgba(19, 91, 236, 0) 100%);
+  }
+
+  .live-indicator {
+    animation: pulse-red 2s infinite;
+  }
+
+  .heatmap-cell {
+    transition: all 0.2s ease;
+  }
+
+  .heatmap-cell:hover {
+    transform: scale(1.05);
+    z-index: 10;
+  }
+}
+
+@keyframes pulse-red {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+
+  70% {
+    box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+@keyframes ping {
+
+  75%,
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+/* LiveMap sidebar card gradient */
+.sidebar-card-gradient {
+  background: linear-gradient(145deg, rgba(28, 38, 58, 1) 0%, rgba(22, 32, 50, 1) 100%);
+}
+
+/* Leaflet dark theme overrides */
+.leaflet-container {
+  background: #1a1a2e !important;
+}
+
+.leaflet-popup-content-wrapper {
+  background: #162032 !important;
+  color: #e2e8f0 !important;
+  border: 1px solid #2a3649 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5) !important;
+}
+
+.leaflet-popup-tip {
+  background: #162032 !important;
+}
+
+.leaflet-popup-close-button {
+  color: #94a3b8 !important;
+}
+
+/* Range slider thumb */
+input[type=range] {
+  -webkit-appearance: none;
+}
+
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: white;
+  border: 2px solid #1E88E5;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+input[type=range]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: white;
+  border: 2px solid #1E88E5;
+  cursor: pointer;
+}
+
+input[type=range]:focus {
+  outline: none;
+}
+
+/* Notification dropdown animation */
+@keyframes notif-slide {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-notif-slide {
+  animation: notif-slide 0.2s ease-out;
+}
