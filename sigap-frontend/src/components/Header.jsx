@@ -1,6 +1,8 @@
 import React from 'react';
 import { Bell, ChevronDown, Map, LayoutDashboard, LineChart, Settings } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
+import { useNotifications } from '../context/NotificationContext';
+import NotificationPanel from './NotificationPanel';
 
 const navItems = [
   { label: 'DashBoard', icon: LayoutDashboard, path: '/' },
@@ -11,6 +13,7 @@ const navItems = [
 
 const Header = () => {
     const location = useLocation();
+    const { togglePanel, unreadCount } = useNotifications();
 
     return (
         <header className="sticky top-0 z-50 w-full border-b border-[#2a3441] bg-[#111722]/95 backdrop-blur supports-[backdrop-filter]:bg-[#111722]/60">
@@ -54,9 +57,17 @@ const Header = () => {
                     {/* Right Actions */}
                     <div className="flex items-center gap-4 border-l border-[#2a3441] pl-6">
                         {/* Notification Bell */}
-                        <button className="relative rounded-lg p-2 text-slate-400 hover:text-white hover:bg-[#2a3441] transition-colors">
+                        <button
+                            data-notification-bell
+                            onClick={togglePanel}
+                            className="relative rounded-lg p-2 text-slate-400 hover:text-white hover:bg-[#2a3441] transition-colors"
+                        >
                             <Bell size={24} />
-                            <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-red-500" />
+                            {unreadCount > 0 && (
+                                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 shadow-lg shadow-red-500/30 animate-pulse">
+                                    {unreadCount}
+                                </span>
+                            )}
                         </button>
 
                         <div className="h-8 w-[1px] bg-[#2a3441]" />
@@ -76,6 +87,7 @@ const Header = () => {
                     </div>
                 </div>
             </div>
+            <NotificationPanel />
         </header>
     );
 };

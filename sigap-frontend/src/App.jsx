@@ -10,6 +10,8 @@ import StatsRow from './components/StatsRow';
 import PredictionTimeline from './components/PredictionTimeline';
 import LiveMapPage from './pages/LiveMapPage';
 import { LocationProvider, useLocation } from './context/LocationContext';
+import { NotificationProvider } from './context/NotificationContext';
+import SettingsPage from './pages/SettingsPage';
 
 // -------------------------------------------------------
 // Dashboard page
@@ -75,7 +77,7 @@ function AppContent() {
         <Route path="/" element={<DashboardPage />} />
         <Route path="/live-map" element={<LiveMapPage />} />
         <Route path="/analytics" element={<AnalyticsPage />} />
-        <Route path="/settings" element={<div className="p-10 text-center text-slate-500">Settings Coming Soon</div>} />
+        <Route path="/settings" element={<SettingsPage />} />
       </Routes>
     </div>
   );
@@ -84,7 +86,9 @@ function AppContent() {
 function App() {
   return (
     <LocationProvider>
-      <AppContent />
+      <NotificationProvider>
+        <AppContent />
+      </NotificationProvider>
     </LocationProvider>
   );
 }
