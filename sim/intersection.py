@@ -7,9 +7,11 @@ from core.config import (
     CONGESTION_ALERT_CAPACITY_PERCENT,
     CYCLE_SECONDS,
     DEFAULT_GREEN_SECONDS,
+    DEFAULT_WEATHER_CONDITION,
+    DEFAULT_WEATHER_TEMP_C,
     SIM_MINUTES_PER_TICK,
 )
-from core.time_utils import now_iso
+from core.time_utils import wib_now_iso
 from sim.config import LANES, SAT_FLOW_VEH_PER_HOUR_PER_LANE
 from sim.controller import SignalController
 from sim.demand import DemandProfile
@@ -76,6 +78,10 @@ class IntersectionSim:
         self._total_arrivals_this_tick: int = 0
         self._total_departures_this_tick: int = 0
 
+        # Stable weather — injected externally, not randomised per tick
+        self._weather_temp_c: float = DEFAULT_WEATHER_TEMP_C
+        self._weather_condition: str = DEFAULT_WEATHER_CONDITION
+
     # ------------------------------------------------------------------
     # Controller proxy
     # ------------------------------------------------------------------
@@ -87,6 +93,11 @@ class IntersectionSim:
     # ------------------------------------------------------------------
     # Simulation step
     # ------------------------------------------------------------------
+
+    def set_weather(self, temp_c: float, condition: str) -> None:
+        """Inject stable weather readings (called by tick loop at most every WEATHER_REFRESH_SECONDS)."""
+        self._weather_temp_c = temp_c
+        self._weather_condition = condition
 
     def step(self, tick: int) -> dict:
         """
@@ -152,13 +163,13 @@ class IntersectionSim:
         flow_rate = self._total_arrivals_this_tick / SIM_MINUTES_PER_TICK
 
         return {
-            "timestamp": now_iso(),
+            "timestamp": wib_now_iso(),
             "currentVolume": current_volume,
             "avgSpeedKmh": round(avg_speed, 1),
             "queueLengthVehicles": total_queue,
             "waitTimeMinutes": round(wait_time_minutes, 2),
-            "weatherTempC": 31.0,
-            "weatherCondition": "Rain",
+            "weatherTempC": self._weather_temp_c,
+            "weatherCondition": self._weather_condition,
             "accidentsCount": 0,
             "flowRateCarsPerMin": round(flow_rate, 2),
             "densityPercent": round(density_percent, 1),

@@ -24,8 +24,9 @@ from core.schemas import (
     SystemStatus,
     TimelinePoint,
 )
-from core.time_utils import now_iso
+from core.time_utils import wib_now_iso
 from ml.baselines import persistence
+from weather.service import get_weather_now
 from rec.recommender import generate_top_recommendations
 from sim.intersection import IntersectionSim
 from sim.metrics import compute_flow_label
@@ -203,7 +204,7 @@ def _predict_horizons(rt: _IntersectionRuntime, snapshot: Dict) -> Dict[str, lis
 
         results[label] = [
             {
-                "timestamp": now_iso(),
+                "timestamp": wib_now_iso(),
                 "currentVolume": snapshot["currentVolume"],
                 "predictedVolume": predicted,
                 "congestionThreshold": round(congestion_threshold, 1),
@@ -259,7 +260,7 @@ def _build_intersection_summary(rt: _IntersectionRuntime) -> IntersectionSummary
             "yellowSeconds": s_plan["yellowSeconds"],
             "redSeconds": s_plan["redSeconds"],
         },
-        lastAdjustedAt=now_iso(),
+        lastAdjustedAt=wib_now_iso(),
     )
 
 
@@ -273,7 +274,7 @@ def _build_cameras(rt: _IntersectionRuntime, snapshot: Dict) -> list:
             status="LIVE",
             flowLabel=flow_label,
             avgSpeedKmh=snapshot["avgSpeedKmh"],
-            lastFrameTime=snapshot["timestamp"],
+            lastFrameTime=wib_now_iso(),
         ),
         CameraFeedCard(
             cameraId=f"CAM-{rt.intersection_id}-2",
@@ -281,7 +282,7 @@ def _build_cameras(rt: _IntersectionRuntime, snapshot: Dict) -> list:
             status="LIVE",
             flowLabel=flow_label,
             avgSpeedKmh=snapshot["avgSpeedKmh"],
-            lastFrameTime=snapshot["timestamp"],
+            lastFrameTime=wib_now_iso(),
         ),
     ]
 
@@ -297,6 +298,14 @@ _runtimes: Dict[str, _IntersectionRuntime] = {
 
 def _tick(tick: int) -> None:
     all_cameras = []
+
+    # Fetch stable weather once per tick (weather.service caches internally)
+    for rt in _runtimes.values():
+        weather = get_weather_now(
+            location_key=rt.intersection_id,
+            adm4=None,  # uses BMKG_ADM4_DEFAULT; override via config/env
+        )
+        rt.sim.set_weather(weather.tempC, weather.condition)
 
     for rt in _runtimes.values():
         # 1. Simulation step
@@ -343,7 +352,11 @@ def _tick(tick: int) -> None:
     store.update_system_status(
         systemOperational=True,
         live=True,
-        message=f"Tick {tick} — simulation running.",
+        message=(
+            f"Tick {tick} — simulation running. "
+            "Weather source: BMKG (cached 10 min). "
+            "Timezone: WIB (Asia/Jakarta)."
+        ),
     )
 
 
