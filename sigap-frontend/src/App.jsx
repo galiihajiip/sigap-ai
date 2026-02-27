@@ -1,5 +1,6 @@
 import React from 'react';
-import { Routes, Route, useLocation as useRouteLocation } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
+import AnalyticsPage from './pages/AnalyticsPage';
 import { MapPin } from 'lucide-react';
 import Header from './components/Header';
 import CameraFeed from './components/CameraFeed';
@@ -73,7 +74,7 @@ function AppContent() {
       <Routes>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/live-map" element={<LiveMapPage />} />
-        <Route path="/analytics" element={<div className="p-10 text-center text-slate-500">Analytics Coming Soon</div>} />
+        <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="/settings" element={<div className="p-10 text-center text-slate-500">Settings Coming Soon</div>} />
       </Routes>
     </div>
