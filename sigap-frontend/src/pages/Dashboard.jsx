@@ -3,7 +3,16 @@ import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import PredictionTimeline from '../components/PredictionTimeline';
 
-const API_BASE = (import.meta.env.VITE_API_BASE || '').replace(/\/+$/, '');
+const API_BASE = (
+    import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
+).replace(/\/+$/, '');
+
+const getErrorMessage = (error) => {
+    if (error?.response?.data?.detail) return String(error.response.data.detail);
+    if (error?.code === 'ECONNABORTED') return 'Request timeout ke backend.';
+    if (error?.message) return String(error.message);
+    return 'Unknown network error.';
+};
 
 const getYoutubeEmbedUrl = (url) => {
     if (!url) return "";
@@ -103,7 +112,7 @@ const Dashboard = () => {
             setFetchError(null);
         } catch (error) {
             console.error("Gagal mengambil data AI:", error);
-            setFetchError(error.message);
+            setFetchError(getErrorMessage(error));
         }
     };
 
@@ -194,7 +203,7 @@ const Dashboard = () => {
                         <span className="material-symbols-outlined text-red-500 text-4xl mb-2">error</span>
                         <p className="font-bold text-red-500 text-xl mb-2">Koneksi ke AI Terputus!</p>
                         <p className="text-slate-300 mb-4">Pesan Error Asli: <code className="bg-black/50 p-1 rounded text-yellow-400">{fetchError}</code></p>
-                        <p className="text-sm text-slate-400">Server Hugging Face mungkin sedang tertidur. Silakan tunggu 1-2 menit atau refresh halaman.</p>
+                        <p className="text-sm text-slate-400">Pastikan backend aktif di 127.0.0.1:8000 dan frontend dijalankan dari sigap-frontend.</p>
                     </div>
                 ) : (
                     <>
@@ -808,4 +817,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-
