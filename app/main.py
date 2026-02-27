@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -12,8 +14,17 @@ from app.routes import (
     notifications,
     settings,
 )
+from app.tick_loop import start_tick_loop, stop_tick_loop
 
-app = FastAPI(title=APP_NAME)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    start_tick_loop()
+    yield
+    stop_tick_loop()
+
+
+app = FastAPI(title=APP_NAME, lifespan=lifespan)
 
 # ---------------------------------------------------------------------------
 # CORS
