@@ -1,0 +1,32 @@
+{
+  "level": "approach",
+  "feature_columns": [
+    "vehicle_count_1min",
+    "avg_speed_kmh",
+    "queue_length_veh",
+    "wait_time_min",
+    "green_seconds",
+    "density_percent",
+    "weather_temp_c",
+    "accident_count",
+    "roadwork_flag",
+    "event_flag",
+    "volume_proxy",
+    "hour",
+    "minute_of_day",
+    "day_of_week",
+    "is_weekend",
+    "hour_sin",
+    "hour_cos",
+    "is_morning_peak",
+    "is_evening_peak",
+    "wcon_Rain",
+    "wcon_Cloudy",
+    "wcon_Hot",
+    "wcon_Clear",
+    "ap_N",
+    "ap_E",
+    "ap_S",
+    "ap_W"
+  ]
+}
