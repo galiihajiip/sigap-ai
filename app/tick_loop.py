@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import importlib
+import os
 import threading
 import time
 from typing import Any, Dict, Optional
@@ -27,6 +27,7 @@ from core.schemas import (
 )
 from core.time_utils import wib_now_iso
 from ml.baselines import persistence
+from ml.lstm_infer import SigapLSTMInference
 from weather.service import get_weather_now
 from rec.recommender import generate_top_recommendations
 from sim.intersection import IntersectionSim
@@ -50,18 +51,12 @@ _INTERSECTIONS = [
 ]
 
 # ---------------------------------------------------------------------------
-# Optional ML imports (graceful fallback when models not yet trained)
+# LSTM model file path
 # ---------------------------------------------------------------------------
-
-def _try_import(module: str) -> Optional[Any]:
-    try:
-        return importlib.import_module(module)
-    except Exception:
-        return None
-
-
-_shortterm = _try_import("ml.shortterm_15m")
-_xgb_mod = _try_import("ml.xgb_forecaster")
+_LSTM_MODEL_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "ml", "artifacts", "sigap_model.h5",
+)
 
 
 # ---------------------------------------------------------------------------
@@ -78,6 +73,14 @@ class _IntersectionRuntime:
 
         # (tick, volume) history for ML baselines
         self._history: list = []
+
+        # LSTM inference engine (one per intersection)
+        self.infer = SigapLSTMInference()
+        self._model_file: str = (
+            "sigap_model.h5"
+            if os.path.exists(_LSTM_MODEL_PATH)
+            else "sigap_model.h5 (missing, fallback)"
+        )
 
         # Rolling pandas DataFrame for ML training
         self.df_buffer: pd.DataFrame = pd.DataFrame(
@@ -133,43 +136,51 @@ _XGB_HORIZONS = {
 }
 
 
-def _predict_15m(rt: _IntersectionRuntime, tick: int, snapshot: Dict) -> Prediction15m:
-    """Produce a 15-minute prediction using shortterm_15m or fallback."""
-    current_volume: int = snapshot["currentVolume"]
+def _build_lstm_feature_row(
+    snapshot: Dict,
+    weather_condition: str,
+    weather_temp_c: float,
+    accident_count: int = 0,
+    roadwork_flag: int = 0,
+    event_flag: int = 0,
+) -> Dict:
+    """Build the feature dict expected by SigapLSTMInference.update()."""
+    return {
+        "vehicle_count_1min":  snapshot.get("flowRateCarsPerMin", 0.0),
+        "avg_speed_kmh":       snapshot.get("avgSpeedKmh", 50.0),
+        "queue_length_veh":    snapshot.get("queueLengthVehicles", 0),
+        "wait_time_min":       snapshot.get("waitTimeMinutes", 0.0),
+        "green_seconds":       snapshot.get("greenSeconds", 30),
+        "density_percent":     snapshot.get("densityPercent", 0.0),
+        "weather_temp_c":      weather_temp_c,
+        "weather_condition":   weather_condition,
+        "accident_count":      accident_count,
+        "roadwork_flag":       roadwork_flag,
+        "event_flag":          event_flag,
+        "timestamp_wib":       snapshot.get("timestamp", wib_now_iso()),
+    }
 
-    if _shortterm is not None and hasattr(_shortterm, "predict"):
-        try:
-            predicted_volume = int(_shortterm.predict(rt.df_buffer, horizon_ticks=_HORIZON_15M_TICKS))
-            confidence = getattr(_shortterm, "CONFIDENCE", DEFAULT_SYSTEM_CONFIDENCE_PERCENT)
-            model_name = getattr(_shortterm, "MODEL_NAME", "LSTM Neural Network")
-            model_file = getattr(_shortterm, "MODEL_FILE", "sigap_model.h5")
-        except Exception:
-            predicted_volume = persistence(rt.history, _HORIZON_15M_TICKS)
-            confidence = DEFAULT_SYSTEM_CONFIDENCE_PERCENT
-            model_name = "Persistence Baseline"
-            model_file = "baseline.pkl"
-    else:
-        predicted_volume = persistence(rt.history, _HORIZON_15M_TICKS)
-        confidence = DEFAULT_SYSTEM_CONFIDENCE_PERCENT
-        model_name = "Persistence Baseline"
-        model_file = "baseline.pkl"
+
+def _predict_15m(rt: _IntersectionRuntime, tick: int, snapshot: Dict) -> Prediction15m:
+    """Produce a 15-minute prediction using the LSTM inference engine."""
+    current_volume: int = snapshot["currentVolume"]
+    density_pct: float = float(snapshot.get("densityPercent", 0.0))
+
+    preds = rt.infer.predict(density_percent=density_pct)
+
+    predicted_volume = preds["predictedVolume15m"]
+    confidence       = preds["systemConfidencePercent"]
+    risk_label       = preds["riskLabel"]
+
+    # Derive a numeric congestion risk from density
+    from ml.lstm_infer import compute_congestion_risk_percent
+    congestion_risk = compute_congestion_risk_percent(density_pct)
 
     delta = predicted_volume - current_volume
-    capacity_volume = current_volume / max(0.01, snapshot["densityPercent"] / 100.0) if snapshot["densityPercent"] > 0 else current_volume * 2
-    congestion_risk = min(100.0, predicted_volume / max(1, capacity_volume) * 100.0)
-
-    if congestion_risk >= 90:
-        risk_label = "Critical"
-    elif congestion_risk >= 76:
-        risk_label = "High"
-    elif congestion_risk >= 50:
-        risk_label = "Moderate"
-    else:
-        risk_label = "Smooth"
 
     return Prediction15m(
-        modelName=model_name,
-        modelFile=model_file,
+        modelName="LSTM Neural Network",
+        modelFile=rt._model_file,
         currentVolume=current_volume,
         predictedVolume15m=predicted_volume,
         deltaVolume=delta,
@@ -189,24 +200,28 @@ def _estimate_peak_time_label(tick: int, horizon_ticks: int) -> str:
 
 
 def _predict_horizons(rt: _IntersectionRuntime, snapshot: Dict) -> Dict[str, list]:
-    """Produce multi-horizon forecast points using XGBForecaster or baseline."""
-    results: Dict[str, list] = {}
-    capacity_volume = snapshot["currentVolume"] / max(0.01, snapshot["densityPercent"] / 100.0) if snapshot["densityPercent"] > 0 else snapshot["currentVolume"] * 2
+    """Produce multi-horizon forecast points using LSTM 2h/4h outputs."""
+    density_pct = float(snapshot.get("densityPercent", 0.0))
+    current_volume = snapshot["currentVolume"]
+
+    capacity_volume = (
+        current_volume / max(0.01, density_pct / 100.0)
+        if density_pct > 0 else current_volume * 2
+    )
     congestion_threshold = capacity_volume * CONGESTION_ALERT_CAPACITY_PERCENT / 100.0
 
-    for label, horizon_ticks in _XGB_HORIZONS.items():
-        if _xgb_mod is not None and hasattr(_xgb_mod, "predict"):
-            try:
-                predicted = int(_xgb_mod.predict(rt.df_buffer, horizon_ticks=horizon_ticks))
-            except Exception:
-                predicted = persistence(rt.history, horizon_ticks)
-        else:
-            predicted = persistence(rt.history, horizon_ticks)
+    preds = rt.infer.predict(density_percent=density_pct)
+    horizon_map = {
+        "2h": preds["predictedVolume2h"],
+        "4h": preds["predictedVolume4h"],
+    }
 
+    results: Dict[str, list] = {}
+    for label, predicted in horizon_map.items():
         results[label] = [
             {
                 "timestamp": wib_now_iso(),
-                "currentVolume": snapshot["currentVolume"],
+                "currentVolume": current_volume,
                 "predictedVolume": predicted,
                 "congestionThreshold": round(congestion_threshold, 1),
                 "congestionDetected": predicted >= congestion_threshold,
@@ -300,44 +315,51 @@ _runtimes: Dict[str, _IntersectionRuntime] = {
 def _tick(tick: int) -> None:
     all_cameras = []
 
-    # Fetch stable weather once per tick (weather.service caches internally)
     for rt in _runtimes.values():
+        # 1. Weather (cached 10 min by weather.service)
         weather = get_weather_now(
             location_key=rt.intersection_id,
-            adm4=None,  # uses BMKG_ADM4_DEFAULT; override via config/env
+            adm4=None,
         )
         rt.sim.set_weather(weather.tempC, weather.condition)
 
-    for rt in _runtimes.values():
-        # 1. Simulation step
+        # 2. Simulation step
         snapshot = rt.sim.step(tick)
 
-        # 2. Append to rolling dataframe
+        # 3. Append to rolling dataframe
         rt.append_row(tick, snapshot)
 
-        # 3. Build typed LiveMetrics
+        # 4. Build typed LiveMetrics
         live = LiveMetrics(**snapshot)
 
-        # 4. 15m prediction
+        # 5. Feed LSTM inference buffer
+        feature_row = _build_lstm_feature_row(
+            snapshot=snapshot,
+            weather_condition=weather.condition,
+            weather_temp_c=weather.tempC,
+        )
+        rt.infer.update(feature_row)
+
+        # 6. 15m prediction
         pred_15m = _predict_15m(rt, tick, snapshot)
 
-        # 5. Multi-horizon forecast
+        # 7. Multi-horizon forecast
         horizons = _predict_horizons(rt, snapshot)
 
-        # 6. Timeline
+        # 8. Timeline
         timeline = _build_timeline(rt, pred_15m, snapshot)
 
-        # 7. Intersection summary
+        # 9. Intersection summary
         intersection_summary = _build_intersection_summary(rt)
 
-        # 8. Cameras
+        # 10. Cameras
         cameras = _build_cameras(rt, snapshot)
         all_cameras.extend(cameras)
 
-        # 9. Record sensor tick for failsafe tracker
+        # 11. Record sensor tick for failsafe tracker
         record_sensor_tick(rt.intersection_id)
 
-        # 10a. Write to state store
+        # 12. Write to state store
         store.update_live(rt.intersection_id, live)
         store.update_prediction15m(rt.intersection_id, pred_15m)
         store.update_timeline(rt.intersection_id, timeline)
