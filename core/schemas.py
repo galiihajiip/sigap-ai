@@ -180,6 +180,14 @@ class SettingsPayload(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Request bodies
+# ---------------------------------------------------------------------------
+
+class AdjustRequest(BaseModel):
+    approach: str       # "N" | "E" | "S" | "W"
+    deltaSeconds: int   # positive = extend, negative = reduce
+
+# ---------------------------------------------------------------------------
 # Response wrappers
 # ---------------------------------------------------------------------------
 class SystemOverviewResponse(BaseModel):

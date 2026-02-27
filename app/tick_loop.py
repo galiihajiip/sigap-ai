@@ -409,3 +409,12 @@ def start_tick_loop() -> threading.Thread:
 def stop_tick_loop() -> None:
     """Signal the tick loop to stop (used in tests / graceful shutdown)."""
     _stop_event.set()
+
+
+def get_controller(intersection_id: str):
+    """
+    Return the SignalController for *intersection_id*, or None if not found.
+    Used by route handlers that need to apply/revert the signal plan.
+    """
+    rt = _runtimes.get(intersection_id)
+    return rt.sim.controller if rt is not None else None
