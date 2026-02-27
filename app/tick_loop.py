@@ -7,6 +7,7 @@ from typing import Any, Dict, Optional
 
 import pandas as pd
 
+from app.failsafe import check_all_failsafes, record_sensor_tick
 from app.state_store import store
 from core.config import (
     CONGESTION_ALERT_CAPACITY_PERCENT,
@@ -333,7 +334,10 @@ def _tick(tick: int) -> None:
         cameras = _build_cameras(rt, snapshot)
         all_cameras.extend(cameras)
 
-        # 9. Write to state store
+        # 9. Record sensor tick for failsafe tracker
+        record_sensor_tick(rt.intersection_id)
+
+        # 10a. Write to state store
         store.update_live(rt.intersection_id, live)
         store.update_prediction15m(rt.intersection_id, pred_15m)
         store.update_timeline(rt.intersection_id, timeline)
@@ -343,6 +347,9 @@ def _tick(tick: int) -> None:
 
     # Cameras (all intersections)
     store.update_cameras(all_cameras)
+
+    # Failsafe check (reverts stale intersections to baseline)
+    check_all_failsafes({rt.intersection_id: rt.sim.controller for rt in _runtimes.values()})
 
     # 10. Recommendations (cross-intersection)
     recs = generate_top_recommendations(store)
