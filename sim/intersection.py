@@ -18,6 +18,7 @@ from sim.demand import DemandProfile
 
 # Maximum queue depth per approach used for density normalisation
 _MAX_QUEUE_PER_APPROACH = 80  # vehicles
+_QUEUE_HARD_CAP_PER_APPROACH = 120
 
 # Approaches
 _APPROACHES = ["N", "E", "S", "W"]
@@ -118,7 +119,7 @@ class IntersectionSim:
             demand = self._queue[approach] + arr
             dep = int(min(demand, capacity))
 
-            self._queue[approach] = max(0, demand - dep)
+            self._queue[approach] = min(_QUEUE_HARD_CAP_PER_APPROACH, max(0, demand - dep))
             total_arrivals += arr
             total_departures += dep
 

@@ -44,9 +44,16 @@ _MAX_BUFFER_ROWS = 7 * 24 * 60
 # Intersection definitions (could be loaded from config/DB in production)
 _INTERSECTIONS = [
     {
-        "intersectionId": "SUR-4092",
-        "locationName": "Jl. Soedirman, Surabaya",
-        "city": "Surabaya",
+        "intersectionId": "BDG-ITB-01",
+        "locationName": "Kel. Lebak Siliwangi, Kec. Coblong (dekat ITB)",
+        "city": "Bandung",
+        "adm4": "32.73.02.1006",
+    },
+    {
+        "intersectionId": "BDG-ITB-02",
+        "locationName": "Kel. Dago, Kec. Coblong (dekat ITB)",
+        "city": "Bandung",
+        "adm4": "32.73.02.1004",
     },
 ]
 
@@ -68,6 +75,7 @@ class _IntersectionRuntime:
         self.intersection_id: str = meta["intersectionId"]
         self.location_name: str = meta["locationName"]
         self.city: str = meta["city"]
+        self.adm4: Optional[str] = meta.get("adm4")
         self.sim = IntersectionSim(intersection_id=self.intersection_id)
         self.timeline_buf = TimelineBuffer(maxlen=600)
 
@@ -282,25 +290,28 @@ def _build_intersection_summary(rt: _IntersectionRuntime) -> IntersectionSummary
 
 def _build_cameras(rt: _IntersectionRuntime, snapshot: Dict) -> list:
     """Generate synthetic CameraFeedCard entries from live metrics."""
-    flow_label = compute_flow_label(snapshot["avgSpeedKmh"])
-    return [
-        CameraFeedCard(
-            cameraId=f"CAM-{rt.intersection_id}-1",
-            label=f"Cam 1 - {rt.location_name}",
-            status="LIVE",
-            flowLabel=flow_label,
-            avgSpeedKmh=snapshot["avgSpeedKmh"],
-            lastFrameTime=wib_now_iso(),
-        ),
-        CameraFeedCard(
-            cameraId=f"CAM-{rt.intersection_id}-2",
-            label=f"Cam 2 - {rt.location_name} (bypass)",
-            status="LIVE",
-            flowLabel=flow_label,
-            avgSpeedKmh=snapshot["avgSpeedKmh"],
-            lastFrameTime=wib_now_iso(),
-        ),
+    base_speed = snapshot["avgSpeedKmh"]
+    cam_speeds = [base_speed, max(5.0, base_speed - 4.0), base_speed + 2.0, max(5.0, base_speed - 7.0)]
+    cam_labels = [
+        f"Cam 1 - {rt.location_name} North",
+        f"Cam 2 - {rt.location_name} East",
+        f"Cam 3 - {rt.location_name} South",
+        f"Cam 4 - {rt.location_name} West",
     ]
+
+    cams = []
+    for idx, speed in enumerate(cam_speeds):
+        cams.append(
+            CameraFeedCard(
+                cameraId=f"CAM-{rt.intersection_id}-{idx + 1}",
+                label=cam_labels[idx],
+                status="LIVE",
+                flowLabel=compute_flow_label(speed),
+                avgSpeedKmh=round(speed, 1),
+                lastFrameTime=wib_now_iso(),
+            )
+        )
+    return cams
 
 
 # ---------------------------------------------------------------------------
@@ -319,7 +330,7 @@ def _tick(tick: int) -> None:
         # 1. Weather (cached 10 min by weather.service)
         weather = get_weather_now(
             location_key=rt.intersection_id,
-            adm4=None,
+            adm4=rt.adm4,
         )
         rt.sim.set_weather(weather.tempC, weather.condition)
 

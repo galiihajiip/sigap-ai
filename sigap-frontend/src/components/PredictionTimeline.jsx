@@ -1,176 +1,348 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+    ResponsiveContainer, ReferenceLine, ReferenceArea, Line,
+    ComposedChart
+} from 'recharts';
 
-const bottomStats = [
-  {
-    icon: 'queue_music',
-    label: 'Queue Length',
-    value: '45 cars',
-    change: '12% vs avg',
-    changeIcon: 'arrow_upward',
-    changeColor: 'text-red-400',
-  },
-  {
-    icon: 'timer',
-    label: 'Wait Time',
-    value: '12 mins',
-    change: 'Moderate delay',
-    changeColor: 'text-yellow-400',
-  },
-  {
-    icon: 'wb_sunny',
-    label: 'Weather',
-    value: '30°C',
-    change: 'Sunny, Clear visibility',
-    changeColor: 'text-slate-400',
-  },
-  {
-    icon: 'speed',
-    label: 'Avg Speed',
-    value: '15 km/h',
-    change: '-5 km/h slowing',
-    changeColor: 'text-red-400',
-  },
-  {
-    icon: 'car_crash',
-    label: 'Accidents',
-    value: '0',
-    change: 'None reported',
-    changeColor: 'text-green-500',
-  },
-];
+const MAX_POINTS = 120; // ~4 minutes at 2s interval
 
-const PredictionTimeline = () => {
-  return (
-    <div className="space-y-6">
-      {/* Chart Card */}
-      <div className="bg-[#1e2433] rounded-lg border border-[#2a3441] p-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
-          <div>
-            <h3 className="text-lg font-bold text-white">Prediction Timeline</h3>
-            <p className="text-slate-400 text-sm">Projected vehicle density over the next 4 hours</p>
-          </div>
-          <div className="flex items-center gap-4 text-sm">
-            <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-slate-400/50" />
-              <span className="text-slate-400">Historical</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-[#135bec]" />
-              <span className="text-white font-medium">Predicted</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/50" />
-              <span className="text-slate-400">Congestion Zone</span>
-            </div>
-          </div>
+const CustomTooltip = ({ active, payload, label }) => {
+    if (!active || !payload || !payload.length) return null;
+
+    const volume = payload.find(p => p.dataKey === 'volume');
+    const predicted = payload.find(p => p.dataKey === 'predicted');
+
+    return (
+        <div className="bg-[#0f1a2e] border border-[#2a3441] rounded-lg p-3 shadow-2xl min-w-[180px]">
+            <p className="text-slate-400 text-xs font-mono mb-2 border-b border-[#2a3441] pb-2">{label}</p>
+            {volume && (
+                <div className="flex items-center justify-between gap-4 mb-1">
+                    <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#3b82f6]"></span>
+                        <span className="text-slate-300 text-xs">Volume</span>
+                    </div>
+                    <span className="text-white font-mono font-bold text-sm">{volume.value}</span>
+                </div>
+            )}
+            {predicted && predicted.value != null && (
+                <div className="flex items-center justify-between gap-4 mb-1">
+                    <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#a855f7]"></span>
+                        <span className="text-slate-300 text-xs">Predicted</span>
+                    </div>
+                    <span className="text-purple-300 font-mono font-bold text-sm">{predicted.value}</span>
+                </div>
+            )}
+            {volume && volume.value > 450 && (
+                <div className="mt-2 pt-2 border-t border-red-500/20">
+                    <span className="text-red-400 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                        Congestion Zone
+                    </span>
+                </div>
+            )}
         </div>
+    );
+};
 
-        {/* SVG Chart */}
-        <div className="relative h-64 w-full border-l border-b border-[#2a3441]">
-          {/* Horizontal grid lines */}
-          <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
-            <div className="w-full h-px bg-[#2a3441]/50" />
-            <div className="w-full h-px bg-[#2a3441]/50" />
-            <div className="w-full h-px bg-[#2a3441]/50" />
-            <div className="w-full h-px bg-[#2a3441]/50" />
-            <div className="w-full h-px bg-transparent" />
-          </div>
+const CustomDot = ({ cx, cy, index, dataLength }) => {
+    // Only show dot on the latest point
+    if (index !== dataLength - 1) return null;
+    return (
+        <g>
+            <circle cx={cx} cy={cy} r={6} fill="#3b82f6" opacity={0.3}>
+                <animate attributeName="r" values="6;12;6" dur="2s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.3;0.1;0.3" dur="2s" repeatCount="indefinite" />
+            </circle>
+            <circle cx={cx} cy={cy} r={4} fill="#3b82f6" stroke="#fff" strokeWidth={2} />
+        </g>
+    );
+};
 
-          {/* Congestion Risk Zone */}
-          <div className="absolute top-0 right-0 w-1/3 h-1/2 bg-red-500/5 border-l border-b border-red-500/10 rounded-bl-xl pointer-events-none flex items-end justify-start p-2">
-            <span className="text-xs text-red-500/50 font-bold uppercase">Congestion Risk Zone</span>
-          </div>
+const PredictionTimeline = ({ trafficData }) => {
+    const [dataHistory, setDataHistory] = useState([]);
+    const lastTimestampRef = useRef(null);
 
-          {/* SVG Lines */}
-          <svg className="absolute inset-0 h-full w-full overflow-visible" preserveAspectRatio="none">
-            {/* Historical dashed line */}
-            <path
-              className="opacity-50"
-              d="M0,200 C50,190 100,180 150,160 C200,140 250,150 300,140 C350,130 400,110 450,120"
-              fill="none"
-              stroke="#64748b"
-              strokeDasharray="4 4"
-              strokeWidth="2"
-            />
+    useEffect(() => {
+        if (!trafficData || !trafficData.timestamp) return;
 
-            {/* Area gradient definition */}
-            <defs>
-              <linearGradient id="areaGradient" x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stopColor="#135bec" stopOpacity="0.3" />
-                <stop offset="100%" stopColor="#135bec" stopOpacity="0" />
-              </linearGradient>
-            </defs>
+        // Only add new data if timestamp changed
+        if (lastTimestampRef.current === trafficData.timestamp) return;
+        lastTimestampRef.current = trafficData.timestamp;
 
-            {/* Predicted area fill */}
-            <path
-              d="M450,120 C500,130 550,100 600,80 C650,60 700,50 750,55 C800,60 850,40 900,30 C950,20 1000,10 1200,5"
-              fill="url(#areaGradient)"
-              stroke="none"
-            />
+        const volume = trafficData.current_conditions?.volume || 0;
+        const predicted = trafficData.prediction_15_mins?.predicted_volume || 0;
+        const risk = trafficData.prediction_15_mins?.risk_level || 0;
+        const time = trafficData.timestamp;
 
-            {/* Predicted line */}
-            <path
-              d="M450,120 C500,130 550,100 600,80 C650,60 700,50 750,55 C800,60 850,40 900,30 C950,20 1000,10 1200,5"
-              fill="none"
-              stroke="#135bec"
-              strokeLinecap="round"
-              strokeWidth="3"
-            />
+        setDataHistory(prev => {
+            const newHistory = [...prev, { time, volume, predicted, risk }];
+            // Keep only the last MAX_POINTS
+            if (newHistory.length > MAX_POINTS) {
+                return newHistory.slice(newHistory.length - MAX_POINTS);
+            }
+            return newHistory;
+        });
+    }, [trafficData]);
 
-            {/* "Now" vertical dashed line */}
-            <line
-              className="opacity-30"
-              stroke="#fff"
-              strokeDasharray="4 2"
-              strokeWidth="1"
-              x1="450" x2="450"
-              y1="0" y2="256"
-            />
+    // Generate forecast extension (projecting 8 future points from last data)
+    const generateForecast = () => {
+        if (dataHistory.length < 2) return [];
 
-            {/* "Now" dot */}
-            <circle cx="450" cy="120" fill="#fff" r="4" />
-          </svg>
+        const lastPoint = dataHistory[dataHistory.length - 1];
+        const predicted = lastPoint.predicted;
+        const current = lastPoint.volume;
+        const diff = predicted - current;
+        const forecast = [];
 
-          {/* "Now" label */}
-          <div className="absolute top-[125px] left-[460px] bg-[#2a3441] text-xs px-2 py-1 rounded text-white border border-slate-600 shadow-lg z-10 hidden lg:block">
-            Now
-          </div>
-        </div>
+        for (let i = 1; i <= 8; i++) {
+            const minutes = i * 2;
+            const t = i / 8; // 0..1 interpolation factor
+            // Smooth interpolation toward predicted volume
+            const projectedVolume = Math.round(current + diff * t + (Math.random() * 10 - 5));
 
-        {/* Time labels */}
-        <div className="flex justify-between text-xs text-slate-500 mt-2 px-2">
-          <span>14:00</span>
-          <span>15:00</span>
-          <span>16:00</span>
-          <span>17:00</span>
-          <span>18:00</span>
-        </div>
-      </div>
+            // Parse last timestamp and increment
+            const timeParts = lastPoint.time.split(':');
+            const totalSeconds = parseInt(timeParts[0]) * 3600 + parseInt(timeParts[1]) * 60 + parseInt(timeParts[2]) + (minutes * 30);
+            const h = Math.floor(totalSeconds / 3600) % 24;
+            const m = Math.floor((totalSeconds % 3600) / 60);
+            const s = totalSeconds % 60;
+            const futureTime = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 
-      {/* Bottom Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        {bottomStats.map((stat) => (
-          <div
-            key={stat.label}
-            className="bg-[#1e2433] p-4 rounded-lg border border-[#2a3441] hover:bg-[#232a3b] transition-colors"
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <span className="material-symbols-outlined text-slate-400 text-[20px]">{stat.icon}</span>
-              <p className="text-slate-400 text-xs font-medium uppercase">{stat.label}</p>
+            forecast.push({
+                time: futureTime,
+                volume: null, // no actual volume in the future
+                predicted: projectedVolume,
+                risk: lastPoint.risk,
+                isForecast: true
+            });
+        }
+        return forecast;
+    };
+
+    const forecastData = generateForecast();
+    const chartData = [...dataHistory, ...forecastData];
+
+    // Calculate Y-axis domain
+    const allValues = chartData.flatMap(d => [d.volume, d.predicted].filter(v => v != null));
+    const maxVal = Math.max(600, ...allValues);
+    const yMax = Math.ceil(maxVal / 100) * 100;
+
+    return (
+        <div className="bg-surface-dark rounded-lg border border-[#2a3441] p-6 mb-6">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
+                <div>
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                        Prediction Timeline
+                        <span className="flex h-2 w-2 rounded-full bg-green-400 animate-pulse"></span>
+                    </h3>
+                    <p className="text-slate-400 text-sm">
+                        Live vehicle density — {dataHistory.length} data points collected
+                    </p>
+                </div>
+                <div className="flex items-center gap-4 text-sm flex-wrap">
+                    <div className="flex items-center gap-2">
+                        <span className="w-3 h-0.5 bg-[#3b82f6] rounded-full block"></span>
+                        <span className="text-slate-300 text-xs">Current Volume</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="w-3 h-0.5 bg-[#a855f7] rounded-full block" style={{ borderBottom: '2px dashed #a855f7' }}></span>
+                        <span className="text-slate-300 text-xs">AI Predicted</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-sm bg-red-500/20 border border-red-500/40 block"></span>
+                        <span className="text-slate-300 text-xs">Congestion Zone</span>
+                    </div>
+                </div>
             </div>
-            <p className="text-xl font-bold text-white">{stat.value}</p>
-            <p className={`text-xs mt-1 ${stat.changeColor} flex items-center`}>
-              {stat.changeIcon && (
-                <span className="material-symbols-outlined text-[14px]">{stat.changeIcon}</span>
-              )}
-              {stat.change}
-            </p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+
+            {/* Chart */}
+            <div className="w-full" style={{ height: 'clamp(220px, 30vw, 320px)' }}>
+                {chartData.length < 2 ? (
+                    <div className="h-full flex flex-col items-center justify-center text-slate-500">
+                        <span className="material-symbols-outlined text-4xl mb-3 animate-pulse text-primary/50">monitoring</span>
+                        <p className="text-sm font-medium">Collecting data points...</p>
+                        <p className="text-xs text-slate-600 mt-1">Chart will appear after 2+ readings</p>
+                    </div>
+                ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                        <ComposedChart
+                            data={chartData}
+                            margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
+                        >
+                            <defs>
+                                <linearGradient id="volumeGradient" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.25} />
+                                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.0} />
+                                </linearGradient>
+                                <linearGradient id="predictedGradient" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor="#a855f7" stopOpacity={0.15} />
+                                    <stop offset="95%" stopColor="#a855f7" stopOpacity={0.0} />
+                                </linearGradient>
+                            </defs>
+
+                            <CartesianGrid
+                                strokeDasharray="3 3"
+                                stroke="#2a3441"
+                                vertical={false}
+                            />
+
+                            {/* Congestion zone background */}
+                            <ReferenceArea
+                                y1={450}
+                                y2={yMax}
+                                fill="#ef4444"
+                                fillOpacity={0.06}
+                                stroke="#ef4444"
+                                strokeOpacity={0.15}
+                                strokeDasharray="4 4"
+                            />
+
+                            {/* Congestion threshold line */}
+                            <ReferenceLine
+                                y={450}
+                                stroke="#ef4444"
+                                strokeDasharray="6 3"
+                                strokeOpacity={0.4}
+                                label={{
+                                    value: 'Congestion Threshold',
+                                    position: 'insideTopRight',
+                                    fill: '#ef4444',
+                                    fontSize: 10,
+                                    fontWeight: 'bold',
+                                    opacity: 0.6
+                                }}
+                            />
+
+                            {/* "Now" divider between real data and forecast */}
+                            {forecastData.length > 0 && dataHistory.length > 0 && (
+                                <ReferenceLine
+                                    x={dataHistory[dataHistory.length - 1].time}
+                                    stroke="#ffffff"
+                                    strokeDasharray="4 2"
+                                    strokeOpacity={0.3}
+                                    label={{
+                                        value: 'NOW',
+                                        position: 'top',
+                                        fill: '#fff',
+                                        fontSize: 10,
+                                        fontWeight: 'bold',
+                                        offset: 10
+                                    }}
+                                />
+                            )}
+
+                            <XAxis
+                                dataKey="time"
+                                stroke="#475569"
+                                tick={{ fill: '#64748b', fontSize: 11, fontFamily: 'monospace' }}
+                                tickLine={false}
+                                axisLine={{ stroke: '#2a3441' }}
+                                interval="preserveStartEnd"
+                                minTickGap={40}
+                            />
+
+                            <YAxis
+                                stroke="#475569"
+                                tick={{ fill: '#64748b', fontSize: 11, fontFamily: 'monospace' }}
+                                tickLine={false}
+                                axisLine={{ stroke: '#2a3441' }}
+                                domain={[0, yMax]}
+                                tickCount={6}
+                                width={45}
+                            />
+
+                            <Tooltip
+                                content={<CustomTooltip />}
+                                cursor={{
+                                    stroke: '#3b82f6',
+                                    strokeWidth: 1,
+                                    strokeDasharray: '4 4',
+                                    strokeOpacity: 0.4
+                                }}
+                            />
+
+                            {/* Current Volume Area */}
+                            <Area
+                                type="monotone"
+                                dataKey="volume"
+                                stroke="#3b82f6"
+                                strokeWidth={2.5}
+                                fill="url(#volumeGradient)"
+                                connectNulls={false}
+                                isAnimationActive={true}
+                                animationDuration={500}
+                                animationEasing="ease-out"
+                                dot={(props) => (
+                                    <CustomDot {...props} dataLength={dataHistory.length} />
+                                )}
+                                activeDot={{
+                                    r: 5,
+                                    fill: '#3b82f6',
+                                    stroke: '#fff',
+                                    strokeWidth: 2
+                                }}
+                            />
+
+                            {/* Predicted Volume Line */}
+                            <Area
+                                type="monotone"
+                                dataKey="predicted"
+                                stroke="#a855f7"
+                                strokeWidth={2}
+                                strokeDasharray="6 3"
+                                fill="url(#predictedGradient)"
+                                connectNulls={true}
+                                isAnimationActive={true}
+                                animationDuration={500}
+                                animationEasing="ease-out"
+                                dot={false}
+                                activeDot={{
+                                    r: 4,
+                                    fill: '#a855f7',
+                                    stroke: '#fff',
+                                    strokeWidth: 2
+                                }}
+                            />
+                        </ComposedChart>
+                    </ResponsiveContainer>
+                )}
+            </div>
+
+            {/* Bottom stats */}
+            {dataHistory.length > 0 && (
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mt-4 pt-4 border-t border-[#2a3441]">
+                    <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-slate-500 text-[16px]">speed</span>
+                        <span className="text-xs text-slate-400">Latest:</span>
+                        <span className="text-xs text-white font-mono font-bold">
+                            {dataHistory[dataHistory.length - 1].volume} veh
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-purple-400 text-[16px]">psychology</span>
+                        <span className="text-xs text-slate-400">Predicted:</span>
+                        <span className="text-xs text-purple-300 font-mono font-bold">
+                            {dataHistory[dataHistory.length - 1].predicted} veh
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-slate-500 text-[16px]">database</span>
+                        <span className="text-xs text-slate-400">Points:</span>
+                        <span className="text-xs text-white font-mono">{dataHistory.length}</span>
+                    </div>
+                    {dataHistory[dataHistory.length - 1].volume > 450 && (
+                        <div className="flex items-center gap-2 bg-red-500/10 px-2 py-1 rounded border border-red-500/20">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                            <span className="text-xs text-red-400 font-bold">CONGESTION DETECTED</span>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
 };
 
 export default PredictionTimeline;

@@ -211,6 +211,8 @@ class SigapLSTMInference:
         self._model = None
         self._scaler: StandardScaler | None = None
         self._feature_columns: list[str] = []
+        self._idx_vehicle_count: int | None = None
+        self._idx_volume_proxy: int | None = None
         self._weather_categories: list[str] = WEATHER_CATEGORIES
         self._mae_15m: float = _MAE_MID_CONF
         self._rmse_15m: float = _MAE_MID_CONF
@@ -245,6 +247,10 @@ class SigapLSTMInference:
             with open(fc_path) as f:
                 data = json.load(f)
             self._feature_columns = data["feature_columns"]
+            if "vehicle_count_1min" in self._feature_columns:
+                self._idx_vehicle_count = self._feature_columns.index("vehicle_count_1min")
+            if "volume_proxy" in self._feature_columns:
+                self._idx_volume_proxy = self._feature_columns.index("volume_proxy")
         else:
             raise FileNotFoundError(f"feature_columns.json not found in {adir}")
 
@@ -342,7 +348,16 @@ class SigapLSTMInference:
             self._feature_columns,
             self._weather_categories,
         )
-        self._last_volume_proxy = float(vec[self._feature_columns.index("volume_proxy")])
+
+        # Use observed flow as primary fallback signal so prediction remains dynamic
+        # even when queue stays near zero (volume_proxy ~= 0).
+        observed = 0.0
+        if self._idx_vehicle_count is not None:
+            observed = float(vec[self._idx_vehicle_count])
+        if observed <= 0.0 and self._idx_volume_proxy is not None:
+            observed = float(vec[self._idx_volume_proxy])
+        self._last_volume_proxy = observed
+
         self._buffer.append(vec)
 
         # Update rolling residuals if we had a prediction last tick
@@ -411,6 +426,15 @@ class SigapLSTMInference:
         pred_15m = float(max(0.0, preds[0]))
         pred_2h  = float(max(0.0, preds[1]))
         pred_4h  = float(max(0.0, preds[2]))
+
+        # Guardrail: prevent unrealistically collapsed predictions when the
+        # loaded model output drifts out-of-scale versus current live volume.
+        floor_15m = max(1.0, curr_vol * 0.60)
+        floor_2h = max(1.0, curr_vol * 0.70)
+        floor_4h = max(1.0, curr_vol * 0.75)
+        pred_15m = max(pred_15m, floor_15m)
+        pred_2h = max(pred_2h, floor_2h)
+        pred_4h = max(pred_4h, floor_4h)
 
         # Store for next-tick residual tracking
         self._last_pred_15m = pred_15m

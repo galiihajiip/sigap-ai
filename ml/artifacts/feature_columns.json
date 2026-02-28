@@ -1,5 +1,5 @@
 {
-  "level": "approach",
+  "level": "total",
   "feature_columns": [
     "vehicle_count_1min",
     "avg_speed_kmh",
@@ -23,10 +23,6 @@
     "wcon_Rain",
     "wcon_Cloudy",
     "wcon_Hot",
-    "wcon_Clear",
-    "ap_N",
-    "ap_E",
-    "ap_S",
-    "ap_W"
+    "wcon_Clear"
   ]
 }
