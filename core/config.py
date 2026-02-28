@@ -28,7 +28,7 @@ TIMEZONE_NAME = "Asia/Jakarta"
 # Weather provider
 WEATHER_PROVIDER = "BMKG"  # "BMKG" or "AUTO"
 BMKG_FORECAST_URL = "https://api.bmkg.go.id/publik/prakiraan-cuaca"
-BMKG_ADM4_DEFAULT = "35.78.???.????"  # placeholder — set via .env or config
+BMKG_ADM4_DEFAULT = "32.73.02.1006"  # Kel. Lebak Siliwangi, Kec. Coblong (dekat ITB)
 WEATHER_REFRESH_SECONDS = 600  # 10 minutes
 WEATHER_FALLBACK_MODE = "STATIC"  # "STATIC" or "OPEN_METEO"
 
@@ -36,3 +36,4 @@ WEATHER_FALLBACK_MODE = "STATIC"  # "STATIC" or "OPEN_METEO"
 DEFAULT_WEATHER_TEMP_C = 31.0
 DEFAULT_WEATHER_CONDITION = "Rain"
 DEFAULT_WEATHER_DESC = "Hujan"
+

@@ -234,7 +234,7 @@ const Header = () => {
                                 style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuAamexfWBjfdzds2MtWSqTwkCukLnT-w0srNbt9eMjWUraYEuGkTeEMjt4aCE89gbnjemlkKtbBBLY8A28hL1sd_T2rZ7iKEqCCVkN7Mk02U9Y4C496xQv9412oyZLwVohVXOJcDcAcy_d1wmD14po57RbkPUH86pZ7njJ-E4XoKwEdjN68vvyrLdFJR82FCfD3wXHcYMnpuBj2nh2fXv-RahBIlFbU2iTVyP6keyjuLOkWYGKgDrR1wvNLHlFgOuYBs7C-fbQrmzv2')" }}
                             ></div>
                             <div className="hidden lg:block text-left">
-                                <p className="text-sm font-medium text-white group-hover:text-primary transition-colors">Alex Morgan</p>
+                                <p className="text-sm font-medium text-white group-hover:text-primary transition-colors">Ahmad Taufik Hayaza</p>
                                 <p className="text-xs text-slate-400">Admin</p>
                             </div>
                             <span className="material-symbols-outlined text-slate-500 text-[20px]">expand_more</span>

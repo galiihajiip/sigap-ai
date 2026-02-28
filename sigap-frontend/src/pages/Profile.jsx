@@ -97,13 +97,13 @@ const Profile = () => {
         {
             key: 'akun',
             icon: 'person',
-            label: 'Akun Saya',
+            label: 'My Account',
             children: [
-                { key: 'profil', label: 'Profil' },
-                { key: 'password', label: 'Ubah Password' },
+                { key: 'profil', label: 'Profile' },
+                { key: 'password', label: 'Change Password' },
             ],
         },
-        { key: 'notifikasi', icon: 'notifications', label: 'Notifikasi' },
+        { key: 'notifikasi', icon: 'notifications', label: 'Notifications' },
     ];
 
     return (
@@ -136,7 +136,7 @@ const Profile = () => {
                             src={profilePhoto}
                         />
                         <div>
-                            <h3 className="font-bold text-white leading-tight">Agung Hapsah</h3>
+                            <h3 className="font-bold text-white leading-tight">Ahmad Taufik Hayaza</h3>
                             <p className="text-xs text-gray-400">ID 98392018210991</p>
                         </div>
                     </div>
@@ -219,7 +219,7 @@ const Profile = () => {
                                         className="hidden"
                                     />
                                 </div>
-                                <h2 className="text-2xl font-bold text-white mb-1">Agung Hapsah</h2>
+                                <h2 className="text-2xl font-bold text-white mb-1">Ahmad Taufik Hayaza</h2>
                                 <p className="text-sm text-gray-400">ID 98392018210991</p>
                             </div>
 

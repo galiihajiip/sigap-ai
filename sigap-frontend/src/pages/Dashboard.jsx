@@ -44,6 +44,7 @@ const Dashboard = () => {
     const [alertDismissed, setAlertDismissed] = useState(false);
     const [showAdjust, setShowAdjust] = useState(false);
     const [adjustDuration, setAdjustDuration] = useState(45);
+    const [confirmAction, setConfirmAction] = useState(null); // "apply" | "reject" | null
     const [prevStatus, setPrevStatus] = useState(null);
     const [searchParams] = useSearchParams();
     const locationFromMap = searchParams.get('location');
@@ -168,6 +169,26 @@ const Dashboard = () => {
     const handleReject = () => {
         setAlertDismissed(true);
         showNotif("⚠️ Alert Dismissed — AI recommendation rejected. Maintaining current signal timing at " + currentGreen + "s.", "warning");
+    };
+
+    const openApplyConfirm = () => {
+        if (!isDanger || isApplying || alertDismissed) return;
+        setConfirmAction("apply");
+    };
+
+    const openRejectConfirm = () => {
+        if (!isDanger || isApplying || alertDismissed) return;
+        setConfirmAction("reject");
+    };
+
+    const handleConfirmApplyYes = async () => {
+        setConfirmAction(null);
+        await handleApplyAction();
+    };
+
+    const handleConfirmRejectYes = () => {
+        setConfirmAction(null);
+        handleReject();
     };
 
     const handleAdjustApply = async () => {
@@ -425,7 +446,7 @@ const Dashboard = () => {
                             {/* Action Buttons */}
                             <div className="space-y-3 mt-8">
                                 <button
-                                    onClick={handleApplyAction}
+                                    onClick={openApplyConfirm}
                                     disabled={!isDanger || isApplying || alertDismissed}
                                     className={`w-full py-3 px-4 rounded-lg shadow-lg transition-all flex items-center justify-center gap-2 group font-bold ${!isDanger || isApplying || alertDismissed
                                         ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
@@ -441,8 +462,12 @@ const Dashboard = () => {
                                 </button>
                                 <div className="grid grid-cols-2 gap-3">
                                     <button
-                                        onClick={handleReject}
-                                        className="bg-red-600/90 hover:bg-red-700 text-white font-medium py-2.5 px-4 rounded-lg border border-red-700 transition-colors shadow-lg shadow-red-600/10"
+                                        onClick={openRejectConfirm}
+                                        disabled={!isDanger || isApplying || alertDismissed}
+                                        className={`font-medium py-2.5 px-4 rounded-lg border transition-colors shadow-lg ${!isDanger || isApplying || alertDismissed
+                                            ? 'bg-gray-700 text-gray-400 cursor-not-allowed border-gray-700'
+                                            : 'bg-red-600/90 hover:bg-red-700 text-white border-red-700 shadow-red-600/10'
+                                            }`}
                                     >
                                         Reject
                                     </button>
@@ -488,19 +513,20 @@ const Dashboard = () => {
                                 <p className="text-xs text-slate-500 mt-2">vehicles/cycle (simulated sensor)</p>
                             </div>
 
-                            {/* Arrow */}
-                            <div className="hidden md:flex items-center justify-center">
-                                <div className="flex flex-col items-center gap-2">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-16 h-px bg-gradient-to-r from-slate-600 to-primary"></div>
-                                        <div className="bg-primary/20 p-3 rounded-xl border border-primary/30">
-                                            <span className="material-symbols-outlined text-primary text-[32px]">neurology</span>
-                                        </div>
-                                        <div className="w-16 h-px bg-gradient-to-r from-primary to-slate-600"></div>
-                                    </div>
-                                    <p className="text-xs text-primary font-bold uppercase tracking-widest">LSTM Model</p>
-                                    <p className="text-[10px] text-slate-500">sigap_model.h5</p>
+                            {/* Congestion Risk */}
+                            <div className="bg-[#1a2744]/80 p-5 rounded-xl border border-[#2a3441]">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <span className={`material-symbols-outlined ${isDanger ? 'text-red-400' : 'text-yellow-400'} text-[20px]`}>warning</span>
+                                    <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">Model - Congestion Risk</p>
                                 </div>
+                                <div className="flex items-end gap-2">
+                                    <p className={`text-3xl font-bold ${isDanger ? 'text-red-400' : 'text-yellow-400'}`}>{congestionRiskLabel}</p>
+                                    <p className="text-slate-400 text-sm mb-1">{congestionPercent}%</p>
+                                </div>
+                                <div className="w-full bg-[#2a3441] h-1.5 rounded-full mt-3 overflow-hidden">
+                                    <div className={`h-full rounded-full ${isDanger ? 'bg-red-500' : 'bg-yellow-500'}`} style={{ width: `${congestionPercent}%` }}></div>
+                                </div>
+                                <p className="text-[10px] text-slate-500 mt-1">between current input and forecast output</p>
                             </div>
 
                             {/* Predicted Volume (Output) */}
@@ -532,21 +558,7 @@ const Dashboard = () => {
                 </div>
 
                 {/* Stats Cards Row */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                    {/* Congestion Risk */}
-                    <div className="bg-surface-dark p-5 rounded-lg border border-[#2a3441] flex flex-col justify-between hover:border-[#3f4c61] transition-colors">
-                        <div className="flex justify-between items-start mb-2">
-                            <p className="text-slate-400 text-sm font-medium">Congestion Risk</p>
-                            <span className={`material-symbols-outlined ${isDanger ? 'text-red-500 bg-red-500/10' : 'text-green-500 bg-green-500/10'} p-1 rounded`}>trending_up</span>
-                        </div>
-                        <div className="flex items-end gap-2">
-                            <p className="text-2xl font-bold text-white">{congestionRiskLabel}</p>
-                            {isDanger && <p className="text-red-500 text-sm font-medium mb-1">+12%</p>}
-                        </div>
-                        <div className="w-full bg-[#2a3441] h-1.5 rounded-full mt-3 overflow-hidden">
-                            <div className={`h-full rounded-full ${isDanger ? 'bg-red-500' : 'bg-green-500'}`} style={{ width: `${congestionPercent}%` }}></div>
-                        </div>
-                    </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
 
                     {/* Peak Forecast */}
                     <div className="bg-surface-dark p-5 rounded-lg border border-[#2a3441] flex flex-col justify-between hover:border-[#3f4c61] transition-colors">
@@ -807,6 +819,33 @@ const Dashboard = () => {
                                         Save Only
                                     </button>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {confirmAction && (
+                    <div className="fixed inset-0 z-[10000] bg-black/70 flex items-center justify-center p-4 animate-notif-slide" onClick={() => setConfirmAction(null)}>
+                        <div className="bg-[#162032] border border-[#2a3649] rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                            <h3 className="text-white font-bold text-lg mb-2">Confirm Action</h3>
+                            <p className="text-slate-300 text-sm mb-6">
+                                {confirmAction === "apply"
+                                    ? "Do you want to apply AI adjustment?"
+                                    : "Do you want to reject AI adjustment?"}
+                            </p>
+                            <div className="grid grid-cols-2 gap-3">
+                                <button
+                                    onClick={confirmAction === "apply" ? handleConfirmApplyYes : handleConfirmRejectYes}
+                                    className="w-full py-2.5 px-4 rounded-lg bg-green-600 hover:bg-green-700 text-white font-semibold transition-colors"
+                                >
+                                    Yes
+                                </button>
+                                <button
+                                    onClick={() => setConfirmAction(null)}
+                                    className="w-full py-2.5 px-4 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold transition-colors"
+                                >
+                                    No
+                                </button>
                             </div>
                         </div>
                     </div>

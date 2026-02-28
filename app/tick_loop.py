@@ -44,9 +44,16 @@ _MAX_BUFFER_ROWS = 7 * 24 * 60
 # Intersection definitions (could be loaded from config/DB in production)
 _INTERSECTIONS = [
     {
-        "intersectionId": "SUR-4092",
-        "locationName": "Jl. Soedirman, Surabaya",
-        "city": "Surabaya",
+        "intersectionId": "BDG-ITB-01",
+        "locationName": "Kel. Lebak Siliwangi, Kec. Coblong (dekat ITB)",
+        "city": "Bandung",
+        "adm4": "32.73.02.1006",
+    },
+    {
+        "intersectionId": "BDG-ITB-02",
+        "locationName": "Kel. Dago, Kec. Coblong (dekat ITB)",
+        "city": "Bandung",
+        "adm4": "32.73.02.1004",
     },
 ]
 
@@ -68,6 +75,7 @@ class _IntersectionRuntime:
         self.intersection_id: str = meta["intersectionId"]
         self.location_name: str = meta["locationName"]
         self.city: str = meta["city"]
+        self.adm4: Optional[str] = meta.get("adm4")
         self.sim = IntersectionSim(intersection_id=self.intersection_id)
         self.timeline_buf = TimelineBuffer(maxlen=600)
 
@@ -322,7 +330,7 @@ def _tick(tick: int) -> None:
         # 1. Weather (cached 10 min by weather.service)
         weather = get_weather_now(
             location_key=rt.intersection_id,
-            adm4=None,
+            adm4=rt.adm4,
         )
         rt.sim.set_weather(weather.tempC, weather.condition)
 
